@@ -142,11 +142,14 @@ bool ConfigDescParser<CLASS_ID, SUBCLASS_ID, PROTOCOL_ID, MASK>::ParseDescriptor
                 case 4:
                         switch(dscrType) {
                                 case USB_DESCRIPTOR_CONFIGURATION:
+                                        USBTRACE1(" Parser found ConfigDescr \r\n", 0x90);
                                         if(!valParser.Parse(pp, pcntdn))
                                                 return false;
                                         confValue = ucd->bConfigurationValue;
+                                        USBTRACE3("   - confValue ", confValue, 0x90);
                                         break;
                                 case USB_DESCRIPTOR_INTERFACE:
+                                        USBTRACE1(" Parser found InterfaceDescr \r\n", 0x90);
                                         if(!valParser.Parse(pp, pcntdn))
                                                 return false;
                                         if((MASK & CP_MASK_COMPARE_CLASS) && uid->bInterfaceClass != CLASS_ID)
@@ -164,19 +167,30 @@ bool ConfigDescParser<CLASS_ID, SUBCLASS_ID, PROTOCOL_ID, MASK>::ParseDescriptor
                                         ifaceNumber = uid->bInterfaceNumber;
                                         ifaceAltSet = uid->bAlternateSetting;
                                         protoValue = uid->bInterfaceProtocol;
+                                        USBTRACE3("   - Number ", ifaceNumber, 0x90);
+                                        USBTRACE3("   - AltSet ", ifaceAltSet, 0x90);
+                                        USBTRACE3("   - protoValue ", protoValue, 0x90);
                                         break;
                                 case USB_DESCRIPTOR_ENDPOINT:
-                                        if(!valParser.Parse(pp, pcntdn))
+                                        USBTRACE1(" Parser found EndptDescr \r\n", 0x90);
+                                        if(!valParser.Parse(pp, pcntdn)) {
+                                                USBTRACE1("   ...but fails parse \r\n", 0x90);
                                                 return false;
-                                        if(isGoodInterface)
-                                                if(theXtractor)
+                                        }
+                                        if(isGoodInterface) {
+                                                if(theXtractor) {
                                                         theXtractor->EndpointXtract(confValue, ifaceNumber, ifaceAltSet, protoValue, (USB_ENDPOINT_DESCRIPTOR*)varBuffer);
+                                                        USBTRACE1("   ...extracted\r\n", 0x90);
+                                                }
+                                        } else {
+                                                USBTRACE1("   ...but not a good interface", 0x90);
+                                        }
                                         break;
-                                        //case HID_DESCRIPTOR_HID:
-                                        //      if (!valParser.Parse(pp, pcntdn))
-                                        //              return false;
-                                        //      PrintHidDescriptor((const USB_HID_DESCRIPTOR*)varBuffer);
-                                        //      break;
+                                // case HID_DESCRIPTOR_HID:
+                                //         if (!valParser.Parse(pp, pcntdn))
+                                //                 return false;
+                                //         PrintHidDescriptor((const USB_HID_DESCRIPTOR*)varBuffer);
+                                //         break;
                                 default:
                                         if(!theSkipper.Skip(pp, pcntdn, dscrLen - 2))
                                                 return false;

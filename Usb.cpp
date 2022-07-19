@@ -93,13 +93,13 @@ uint8_t USB::SetAddress(uint8_t addr, uint8_t ep, EpInfo **ppep, uint16_t *nak_l
 
         *nak_limit = (0x0001UL << (((*ppep)->bmNakPower > USB_NAK_MAX_POWER) ? USB_NAK_MAX_POWER : (*ppep)->bmNakPower));
         (*nak_limit)--;
-        /*
-          USBTRACE2("\r\nAddress: ", addr);
-          USBTRACE2(" EP: ", ep);
-          USBTRACE2(" NAK Power: ",(*ppep)->bmNakPower);
-          USBTRACE2(" NAK Limit: ", nak_limit);
-          USBTRACE("\r\n");
-         */
+        
+          //USBTRACE2("\r\nAddress: ", addr);
+          //USBTRACE2(" EP: ", ep);
+          //USBTRACE2(" NAK Power: ",(*ppep)->bmNakPower);
+          //USBTRACE2(" NAK Limit: ", nak_limit); // Compiler error if uncommenting this line
+          //USBTRACE("\r\n");
+         
         regWr(rPERADDR, addr); //set peripheral address
 
         uint8_t mode = regRd(rMODE);
@@ -129,6 +129,17 @@ uint8_t USB::ctrlReq(uint8_t addr, uint8_t ep, uint8_t bmReqType, uint8_t bReque
         uint8_t rcode;
         SETUP_PKT setup_pkt;
 
+        USBTRACE1("   =>ctrlReq \r\n", 0x81);
+        USBTRACE3("     - addr ", addr, 0x81);
+        USBTRACE3("     - ep ", ep, 0x81);
+        USBTRACE3("     - bmReqType ", bmReqType, 0x81);
+        USBTRACE3("     - bRequest ", bRequest, 0x81);
+        USBTRACE3("     - wValLo ", wValLo, 0x81);
+        USBTRACE3("     - wValHi ", wValHi, 0x81);
+        USBTRACE3("     - wInd ", wInd, 0x81);
+        USBTRACE3("     - total ", total, 0x81);
+        USBTRACE3("     - nbytes ", nbytes, 0x81);
+        
         EpInfo *pep = NULL;
         uint16_t nak_limit = 0;
 
@@ -229,6 +240,9 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
         //printf("Requesting %i bytes ", nbytes);
         uint8_t maxpktsize = pep->maxPktSize;
 
+        USBTRACE1("   => InTransfer\r\n", 0x90);
+        USBTRACE3("      - Requesting ", nbytes, 0x90);
+
         *nbytesptr = 0;
         regWr(rHCTL, (pep->bmRcvToggle) ? bmRCVTOG1 : bmRCVTOG0); //set toggle value
 
@@ -280,6 +294,8 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
                 regWr(rHIRQ, bmRCVDAVIRQ); // Clear the IRQ & free the buffer
                 *nbytesptr += pktsize; // add this packet's byte count to total transfer length
 
+                USBTRACE3("      - Got ", pktsize, 0x90);
+
                 /* The transfer is complete under two conditions:           */
                 /* 1. The device sent a short packet (L.T. maxPacketSize)   */
                 /* 2. 'nbytes' have been transferred.                       */
@@ -293,6 +309,9 @@ uint8_t USB::InTransfer(EpInfo *pep, uint16_t nak_limit, uint16_t *nbytesptr, ui
                 } else if(bInterval > 0)
                         delay(bInterval); // Delay according to polling interval
         } //while( 1 )
+        
+        USBTRACE3("      - Total ", *nbytesptr, 0x90);
+
         return ( rcode);
 }
 
@@ -409,6 +428,11 @@ uint8_t USB::dispatchPkt(uint8_t token, uint8_t ep, uint16_t nak_limit) {
         uint8_t rcode = hrSUCCESS;
         uint8_t retry_count = 0;
         uint16_t nak_count = 0;
+
+        USBTRACE1("  => dispatchPkt \r\n", 0x90);
+        USBTRACE3("   - token ", token, 0x90);
+        USBTRACE3("   - ep ", ep, 0x90);
+        USBTRACE3("   - NAK limit ", nak_limit, 0x90);
 
         while((int32_t)((uint32_t)millis() - timeout) < 0L) {
 #if defined(ESP8266) || defined(ESP32)
@@ -534,7 +558,9 @@ void USB::Task(void) //USB state machine
                                         usb_task_state = USB_STATE_CONFIGURING;
                                  */
                                 usb_task_state = USB_ATTACHED_SUBSTATE_WAIT_RESET;
-                                delay = (uint32_t)millis() + 20;
+                                //delay = (uint32_t)millis() + 20;
+                                delay = (uint32_t)millis() + 500; // 500ms delay for bus reset instead of 20ms
+                                                                  // See  · tmk/USB_Host_Shield_2.0@e37ed6c
                         }
                         break;
                 case USB_ATTACHED_SUBSTATE_WAIT_RESET:
@@ -811,6 +837,7 @@ uint8_t USB::getConfDescr(uint8_t addr, uint8_t ep, uint16_t nbytes, uint8_t con
  total length. The length of the first request can be shorter ( 4 bytes ), however, there are devices which won't work unless this length is set to 9 */
 uint8_t USB::getConfDescr(uint8_t addr, uint8_t ep, uint8_t conf, USBReadParser *p) {
         const uint8_t bufSize = 64;
+        //const uint16_t bufSize = 512;
         uint8_t buf[bufSize];
         USB_CONFIGURATION_DESCRIPTOR *ucd = reinterpret_cast<USB_CONFIGURATION_DESCRIPTOR *>(buf);
 
@@ -821,7 +848,7 @@ uint8_t USB::getConfDescr(uint8_t addr, uint8_t ep, uint8_t conf, USBReadParser 
 
         uint16_t total = ucd->wTotalLength;
 
-        //USBTRACE2("\r\ntotal conf.size:", total);
+        USBTRACE3("\r\ntotal conf.size:", total, 0x80);
 
         return ( ctrlReq(addr, ep, bmREQ_GET_DESCR, USB_REQUEST_GET_DESCRIPTOR, conf, USB_DESCRIPTOR_CONFIGURATION, 0x0000, total, bufSize, buf, p));
 }

@@ -1357,7 +1357,7 @@ MAKE_PIN(P33, (9));
 #undef MAKE_PIN
 
 #else
-#error "Please define board in avrpins.h"
+//#error "Please define board in avrpins.h"
 
 #endif
 

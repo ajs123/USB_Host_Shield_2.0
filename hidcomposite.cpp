@@ -233,9 +233,11 @@ uint8_t HIDComposite::Init(uint8_t parent, uint8_t port, bool lowspeed) {
                 if(hidInterfaces[i].epIndex[epInterruptInIndex] == 0)
                         continue;
 
-                USBTRACE2("SetIdle:", hidInterfaces[i].bmInterface);
+                USBTRACE3("SetIdle:", hidInterfaces[i].bmInterface, 0x80);
 
                 rcode = SetIdle(hidInterfaces[i].bmInterface, 0, 0);
+
+                USBTRACE3("  -- Returned ", rcode, 0x80);
 
                 if(rcode && rcode != hrSTALL)
                         goto FailSetIdle;

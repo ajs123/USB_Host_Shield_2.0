@@ -34,7 +34,15 @@ uint8_t HIDUniversal::Poll() {
 
                         ZeroMemory(constBuffLen, buf);
 
+                        USBTRACE1("  => Poll:\r\n", 0x90);
+                        USBTRACE3("     - interface ", i, 0x90);
+                        USBTRACE3("     - index ", index, 0x90);
+                        USBTRACE3("     - address ", bAddress, 0x90);
+                        USBTRACE3("     - epAddr ", epInfo[index].epAddr, 0x90);
+
                         uint8_t rcode = pUsb->inTransfer(bAddress, epInfo[index].epAddr, &read, buf);
+
+                        USBTRACE3("   Returned ", rcode, 0x90);
 
                         if(rcode) {
                                 if(rcode != hrNAK)
